@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 from loguru import logger
 
+from nanobot.agent.tools.ask import AskUserInterrupt
 from nanobot.agent.tools.base import Tool, tool_parameters
 from nanobot.agent.tools.schema import (
     ArraySchema,
@@ -20,11 +21,21 @@ from nanobot.agent.tools.schema import (
 QUANT_API_URL = "http://host.docker.internal:8001"
 
 
+def get_quant_api_url() -> str:
+    """获取量化平台 API URL（从配置读取）"""
+    try:
+        from nanobot.config import get_config
+        config = get_config()
+        return config.agents.defaults.quant_system_url
+    except Exception:
+        return QUANT_API_URL
+
+
 class _QuantTool(Tool):
     """量化工具基类"""
 
     def __init__(self, api_url: str | None = None):
-        self._api_url = api_url or QUANT_API_URL
+        self._api_url = api_url or get_quant_api_url()
 
     @property
     def read_only(self) -> bool:
@@ -496,8 +507,8 @@ class ExecuteTradeTool(_QuantTool):
     @property
     def description(self) -> str:
         return (
-            "执行交易（当前为 Mock 模式，不会真实执行）。"
-            "注意：此工具目前为模拟模式，后续会添加人工审批流程。"
+            "执行交易操作。"
+            "注意：此操作需要人工确认后才会执行。"
         )
 
     @property
@@ -515,18 +526,22 @@ class ExecuteTradeTool(_QuantTool):
         if not symbol or not action:
             return {"error": "缺少必要参数"}
 
-        # Stage 2 先 Mock，后续 Stage 再实现真实审批流程
-        logger.info(f"[Mock Trade] {action} {quantity} shares of {symbol} @ {price or 'market'}")
+        # 构建确认消息
+        action_text = "买入" if action == "buy" else "卖出"
+        price_text = f"价格 {price}" if price else "市价"
+        question = (
+            f"⚠️ 交易确认请求\n\n"
+            f"操作: {action_text} {symbol}\n"
+            f"数量: {quantity} 股\n"
+            f"价格: {price_text}\n\n"
+            f"请确认是否执行此交易？"
+        )
 
-        return {
-            "status": "mock",
-            "message": "交易请求已记录（Mock模式，需要人工审批流程）",
-            "symbol": symbol,
-            "action": action,
-            "quantity": quantity,
-            "price": price,
-            "note": "此功能将在后续版本中实现真实交易审批流程",
-        }
+        # 抛出中断，等待用户确认
+        raise AskUserInterrupt(
+            question=question,
+            options=["确认执行", "取消"]
+        )
 
 
 # ---------------------------------------------------------------------------

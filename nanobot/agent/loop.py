@@ -36,6 +36,7 @@ from nanobot.agent.tools.image_generation import ImageGenerationTool
 from nanobot.agent.tools.message import MessageTool
 from nanobot.agent.tools.notebook import NotebookEditTool
 from nanobot.agent.tools.quant_tools import QUANT_TOOLS
+from nanobot.agent.tools.stock_agent_tools import STOCK_AGENT_TOOLS
 from nanobot.agent.tools.registry import ToolRegistry
 from nanobot.agent.tools.search import GlobTool, GrepTool
 from nanobot.agent.tools.self import MyTool
@@ -563,6 +564,9 @@ class AgentLoop:
             )
         # 注册量化工具
         for tool_cls in QUANT_TOOLS:
+            self.tools.register(tool_cls())
+        # 注册股票分析工具
+        for tool_cls in STOCK_AGENT_TOOLS:
             self.tools.register(tool_cls())
 
     async def _connect_mcp(self) -> None:

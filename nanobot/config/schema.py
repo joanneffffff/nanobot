@@ -98,6 +98,10 @@ class AgentDefaults(Base):
         validation_alias=AliasChoices("idleCompactAfterMinutes", "sessionTtlMinutes"),
         serialization_alias="idleCompactAfterMinutes",
     )  # Auto-compact idle threshold in minutes (0 = disabled)
+
+    # 微服务 URL 配置
+    quant_system_url: str = "http://host.docker.internal:8001"  # 量化交易服务
+    stock_agent_url: str = "http://host.docker.internal:8002"  # 股票分析服务
     max_messages: int = Field(
         default=120,
         ge=0,
