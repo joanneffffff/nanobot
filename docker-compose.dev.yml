@@ -1,0 +1,28 @@
+# Development docker-compose for nanobot
+# Mounts source code for hot-reload development
+
+services:
+  nanobot-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: nanobot-dev
+    volumes:
+      # Mount source code for development (changes reflect immediately)
+      - ./nanobot:/app/nanobot:ro
+      - ./bridge:/app/bridge:ro
+      # Persist config and workspace
+      - ~/.nanobot:/home/nanobot/.nanobot
+      # Mount tests for running inside container
+      - ./tests:/app/tests:ro
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    ports:
+      # Gateway WebSocket port
+      - "8765:8765"
+      # API port (if using serve command)
+      - "8900:8900"
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: ["/bin/bash"]

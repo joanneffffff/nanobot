@@ -280,6 +280,11 @@ class ToolsConfig(Base):
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
     ssrf_whitelist: list[str] = Field(default_factory=list)  # CIDR ranges to exempt from SSRF blocking (e.g. ["100.64.0.0/10"] for Tailscale)
 
+    # 内置工具开关配置
+    enable_quant_tools: bool = True  # 启用量化工具（股票价格、K线、回测等）
+    enable_stock_agent_tools: bool = True  # 启用股票分析工具（深度分析、概念分析等）
+    enable_intent_tools: bool = True  # 启用意图识别工具（意图识别、路由等）
+
 
 class Config(BaseSettings):
     """Root configuration for nanobot."""

@@ -612,23 +612,5 @@ class AnalyzeStrategyNaturalLanguageTool(_QuantTool):
 
 
 # ---------------------------------------------------------------------------
-# 工具注册列表
+# 工具类定义
 # ---------------------------------------------------------------------------
-
-QUANT_TOOLS: list[type[Tool]] = [
-    GetStockPriceTool,
-    GetStockInfoTool,
-    GetKlineDataTool,
-    SearchStocksTool,
-    GetMarketOverviewTool,
-    GetMarketSentimentTool,
-    RunBacktestTool,
-    GetBacktestResultTool,
-    GetPositionsTool,
-    GetTradingSignalsTool,
-    GetWatchlistTool,
-    AddToWatchlistTool,
-    ExecuteTradeTool,
-    GetEneStocksTool,
-    AnalyzeStrategyNaturalLanguageTool,
-]

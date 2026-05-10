@@ -35,8 +35,30 @@ from nanobot.agent.tools.filesystem import EditFileTool, ListDirTool, ReadFileTo
 from nanobot.agent.tools.image_generation import ImageGenerationTool
 from nanobot.agent.tools.message import MessageTool
 from nanobot.agent.tools.notebook import NotebookEditTool
-from nanobot.agent.tools.quant_tools import QUANT_TOOLS
-from nanobot.agent.tools.stock_agent_tools import STOCK_AGENT_TOOLS
+from nanobot.agent.tools.quant_tools import (
+    GetStockPriceTool,
+    GetStockInfoTool,
+    GetKlineDataTool,
+    SearchStocksTool,
+    GetMarketOverviewTool,
+    GetMarketSentimentTool,
+    RunBacktestTool,
+    GetBacktestResultTool,
+    GetPositionsTool,
+    GetTradingSignalsTool,
+    GetWatchlistTool,
+    AddToWatchlistTool,
+    ExecuteTradeTool,
+    GetEneStocksTool,
+    AnalyzeStrategyNaturalLanguageTool,
+)
+from nanobot.agent.tools.stock_agent_tools import (
+    AnalyzeStockTool,
+    GetStockKlineTool,
+    FilterStocksTool,
+    AnalyzeConceptTool,
+    GetChartTool,
+)
 from nanobot.agent.tools.registry import ToolRegistry
 from nanobot.agent.tools.search import GlobTool, GrepTool
 from nanobot.agent.tools.self import MyTool
@@ -563,11 +585,35 @@ class AgentLoop:
                 CronTool(self.cron_service, default_timezone=self.context.timezone or "UTC")
             )
         # 注册量化工具
-        for tool_cls in QUANT_TOOLS:
-            self.tools.register(tool_cls())
+        if self.tools_config.enable_quant_tools:
+            for cls in (
+                GetStockPriceTool,
+                GetStockInfoTool,
+                GetKlineDataTool,
+                SearchStocksTool,
+                GetMarketOverviewTool,
+                GetMarketSentimentTool,
+                RunBacktestTool,
+                GetBacktestResultTool,
+                GetPositionsTool,
+                GetTradingSignalsTool,
+                GetWatchlistTool,
+                AddToWatchlistTool,
+                ExecuteTradeTool,
+                GetEneStocksTool,
+                AnalyzeStrategyNaturalLanguageTool,
+            ):
+                self.tools.register(cls())
         # 注册股票分析工具
-        for tool_cls in STOCK_AGENT_TOOLS:
-            self.tools.register(tool_cls())
+        if self.tools_config.enable_stock_agent_tools:
+            for cls in (
+                AnalyzeStockTool,
+                GetStockKlineTool,
+                FilterStocksTool,
+                AnalyzeConceptTool,
+                GetChartTool,
+            ):
+                self.tools.register(cls())
 
     async def _connect_mcp(self) -> None:
         """Connect to configured MCP servers (one-time, lazy)."""

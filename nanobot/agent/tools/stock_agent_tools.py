@@ -1,7 +1,9 @@
 """股票分析工具集
 
 调用 langgraph_stock_agent 微服务 API (端口 8002)
-提供股票深度分析、意图识别、查询改写等功能。
+提供股票深度分析、K线查询、筛选等功能。
+
+意图识别在微服务内部自动处理，nanobot 只需调用 analyze_stock 即可。
 """
 from typing import Any
 
@@ -10,9 +12,7 @@ from loguru import logger
 
 from nanobot.agent.tools.base import Tool, tool_parameters
 from nanobot.agent.tools.schema import (
-    ArraySchema,
     IntegerSchema,
-    NumberSchema,
     StringSchema,
     tool_parameters_schema,
 )
@@ -43,19 +43,39 @@ class _StockAgentTool(Tool):
 
 
 # ---------------------------------------------------------------------------
-# analyze_stock - 股票深度分析
+# analyze_stock - 股票深度分析（统一入口，自动处理意图识别）
 # ---------------------------------------------------------------------------
 
 
 @tool_parameters(
     tool_parameters_schema(
-        query=StringSchema("分析请求，如 '分析贵州茅台的走势'"),
+        query=StringSchema(
+            "用户的股票相关问题。支持多种类型：\n"
+            "- 股票分析：'分析贵州茅台的走势'、'宁德时代值得投资吗'\n"
+            "- 简单查询：'茅台今天多少钱'、'600519的K线'\n"
+            "- 概念分析：'AI概念怎么样'、'新能源板块龙头'\n"
+            "- 行业分析：'白酒行业表现如何'\n"
+            "- 财报分析：'茅台财报怎么样'\n"
+            "- 股票筛选：'筛选涨幅超过5%的股票'\n"
+            "- 多轮对话：'它的K线呢'、'这些股票的行业'"
+        ),
         user_id=StringSchema("用户ID，默认为 default"),
         session_id=StringSchema("会话ID，用于多轮对话，可选"),
     )
 )
 class AnalyzeStockTool(_StockAgentTool):
-    """股票深度分析"""
+    """股票分析统一入口。
+
+    自动识别用户意图并路由到对应的分析流程：
+    - stock_analysis: 深度分析技术走势、基本面、投资价值
+    - stock_query: 快速查询价格、K线数据
+    - concept_analysis: 概念板块分析
+    - industry_analysis: 行业分析
+    - financial_analysis: 财报分析
+    - tool_call: 股票筛选
+
+    支持多轮对话，会根据上下文自动改写查询。
+    """
 
     @property
     def name(self) -> str:
@@ -64,8 +84,13 @@ class AnalyzeStockTool(_StockAgentTool):
     @property
     def description(self) -> str:
         return (
-            "深度分析股票，包括技术走势、基本面、概念板块等。"
-            "适用于复杂的分析请求，如 '分析茅台的走势和基本面'、'宁德时代值得投资吗'"
+            "股票分析统一入口。自动识别用户意图，支持：\n"
+            "1. 股票深度分析：技术走势、基本面、投资建议\n"
+            "2. 简单查询：价格、K线、成交量\n"
+            "3. 概念/行业分析：板块走势、龙头股\n"
+            "4. 财报分析：营收、利润、财务指标\n"
+            "5. 股票筛选：按涨幅、市值、成交额等条件筛选\n"
+            "6. 多轮对话：根据上下文理解代词引用"
         )
 
     async def execute(
@@ -108,49 +133,6 @@ class AnalyzeStockTool(_StockAgentTool):
 
             except httpx.HTTPError as e:
                 logger.error(f"analyze_stock error: {e}")
-                return {"error": str(e), "query": query}
-
-
-# ---------------------------------------------------------------------------
-# recognize_intent - 意图识别
-# ---------------------------------------------------------------------------
-
-
-@tool_parameters(
-    tool_parameters_schema(
-        query=StringSchema("用户输入，如 '茅台今天多少钱'"),
-    )
-)
-class RecognizeIntentTool(_StockAgentTool):
-    """意图识别 + 查询改写"""
-
-    @property
-    def name(self) -> str:
-        return "recognize_intent"
-
-    @property
-    def description(self) -> str:
-        return (
-            "识别用户意图并改写查询。"
-            "返回意图类型（stock_analysis/stock_query/concept_analysis等）、"
-            "提取的实体、改写后的查询"
-        )
-
-    async def execute(self, query: str | None = None, **kwargs: Any) -> Any:
-        if not query:
-            return {"error": "缺少用户输入"}
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            try:
-                response = await client.post(
-                    f"{self._api_url}/api/v2/recognize",
-                    json={"query": query, "user_id": "default"},
-                )
-                response.raise_for_status()
-                return response.json()
-
-            except httpx.HTTPError as e:
-                logger.error(f"recognize_intent error: {e}")
                 return {"error": str(e), "query": query}
 
 
@@ -316,72 +298,3 @@ class GetChartTool(_StockAgentTool):
             except httpx.HTTPError as e:
                 logger.error(f"get_chart error: {e}")
                 return {"error": str(e), "chart_id": chart_id}
-
-
-# ---------------------------------------------------------------------------
-# rewrite_query - 多轮对话改写
-# ---------------------------------------------------------------------------
-
-
-@tool_parameters(
-    tool_parameters_schema(
-        current_query=StringSchema("当前用户查询"),
-        chat_history=ArraySchema(
-            StringSchema("对话消息"),
-            description="对话历史，格式为 [{role, content}]",
-        ),
-    )
-)
-class RewriteQueryTool(_StockAgentTool):
-    """多轮对话查询改写"""
-
-    @property
-    def name(self) -> str:
-        return "rewrite_query"
-
-    @property
-    def description(self) -> str:
-        return (
-            "根据对话历史改写当前查询，使其完整独立。"
-            "用于处理代词引用（如 '它的K线'）和上下文依赖"
-        )
-
-    async def execute(
-        self,
-        current_query: str | None = None,
-        chat_history: list | None = None,
-        **kwargs: Any,
-    ) -> Any:
-        if not current_query:
-            return {"error": "缺少当前查询"}
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            try:
-                response = await client.post(
-                    f"{self._api_url}/api/v2/rewrite",
-                    json={
-                        "current_query": current_query,
-                        "chat_history": chat_history or [],
-                    },
-                )
-                response.raise_for_status()
-                return response.json()
-
-            except httpx.HTTPError as e:
-                logger.error(f"rewrite_query error: {e}")
-                return {"error": str(e), "current_query": current_query}
-
-
-# ---------------------------------------------------------------------------
-# 工具注册列表
-# ---------------------------------------------------------------------------
-
-STOCK_AGENT_TOOLS: list[type[Tool]] = [
-    AnalyzeStockTool,
-    RecognizeIntentTool,
-    GetStockKlineTool,
-    FilterStocksTool,
-    AnalyzeConceptTool,
-    GetChartTool,
-    RewriteQueryTool,
-]

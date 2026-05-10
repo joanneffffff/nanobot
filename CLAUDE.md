@@ -13,9 +13,16 @@ nanobot is a lightweight, open-source AI agent framework written in Python with 
 pytest tests/test_openai_api.py::test_function -v
 ruff check nanobot/
 
+# Python: run all tests
+pytest
+
+# Python: install with dev dependencies
+pip install -e ".[dev]"
+
 # WebUI: dev server (proxies API/WS to gateway :8765), build, test
 # Build outputs to ../nanobot/web/dist (bundled into the Python wheel)
-cd webui && bun run dev      # or NANOBOT_API_URL=... bun run dev
+cd webui && bun install           # first time
+cd webui && bun run dev           # or NANOBOT_API_URL=... bun run dev
 cd webui && bun run build
 cd webui && bun run test
 
@@ -67,6 +74,7 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the full two-branch model (`main`
 - Line length: 100.
 - Linting: `ruff` with rules E, F, I, N, W (E501 ignored).
 - pytest with `asyncio_mode = "auto"`.
+- **Do not use `ruff format`** — it destroys git blame history. Only `ruff check` should be used.
 
 ## Common File Locations
 
@@ -76,3 +84,16 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the full two-branch model (`main`
 - Tool registry: `nanobot/agent/tools/registry.py`
 - WebUI dev proxy config: `webui/vite.config.ts`
 - Tests mirror the `nanobot/` package structure.
+
+## Optional Dependencies
+
+Install extra features with `pip install -e ".[<extra>]"`:
+- `dev`: pytest, ruff, coverage tools
+- `api`: aiohttp for OpenAI-compatible API server
+- `discord`: discord.py for Discord channel
+- `matrix`: matrix-nio for Matrix channel
+- `wecom`: WeCom enterprise WeChat SDK
+- `weixin`: WeChat QR code and crypto support
+- `msteams`: Microsoft Teams JWT/cryptography
+- `pdf`: pymupdf for PDF reading
+- `olostep`: Olostep web search API
