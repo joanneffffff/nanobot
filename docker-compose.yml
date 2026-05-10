@@ -21,6 +21,8 @@ services:
     ports:
       - 18790:18790
       - 18791:18791
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:
