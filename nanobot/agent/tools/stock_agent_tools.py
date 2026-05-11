@@ -1,6 +1,6 @@
 """股票分析工具集
 
-调用 langgraph_stock_agent 微服务 API (端口 8002)
+调用 langgraph_stock_agent 微服务 API (端口 8000)
 提供股票深度分析、K线查询、筛选等功能。
 
 意图识别在微服务内部自动处理，nanobot 只需调用 analyze_stock 即可。
@@ -18,7 +18,7 @@ from nanobot.agent.tools.schema import (
 )
 
 # 默认股票分析服务 API 地址（可通过配置覆盖）
-STOCK_AGENT_API_URL = "http://host.docker.internal:8002"
+STOCK_AGENT_API_URL = "http://host.docker.internal:8000"
 
 
 def get_stock_agent_url() -> str:
@@ -106,7 +106,7 @@ class AnalyzeStockTool(_StockAgentTool):
         async with httpx.AsyncClient(timeout=120.0) as client:
             try:
                 response = await client.post(
-                    f"{self._api_url}/api/v2/analyze",
+                    f"{self._api_url}/analyze",
                     json={
                         "query": query,
                         "user_id": user_id,
@@ -165,7 +165,7 @@ class GetStockKlineTool(_StockAgentTool):
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
                 response = await client.post(
-                    f"{self._api_url}/api/v2/kline",
+                    f"{self._api_url}/kline",
                     json={"ticker": ticker, "limit": limit},
                 )
                 response.raise_for_status()
@@ -211,7 +211,7 @@ class FilterStocksTool(_StockAgentTool):
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
                 response = await client.post(
-                    f"{self._api_url}/api/v2/filter",
+                    f"{self._api_url}/filter",
                     json={"sql_query": condition, "limit": limit},
                 )
                 response.raise_for_status()
@@ -253,7 +253,7 @@ class AnalyzeConceptTool(_StockAgentTool):
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
                 response = await client.post(
-                    f"{self._api_url}/api/v2/concept",
+                    f"{self._api_url}/concept",
                     json={"concept_name": concept_name},
                 )
                 response.raise_for_status()
@@ -291,7 +291,7 @@ class GetChartTool(_StockAgentTool):
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
-                response = await client.get(f"{self._api_url}/api/v2/chart/{chart_id}")
+                response = await client.get(f"{self._api_url}/chart/{chart_id}")
                 response.raise_for_status()
                 return response.json()
 
