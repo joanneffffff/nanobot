@@ -24,22 +24,40 @@ STOCK_AGENT_API_URL = "http://host.docker.internal:8000"
 def get_stock_agent_url() -> str:
     """获取股票分析服务 URL（从配置读取）"""
     try:
-        from nanobot.config import get_config
-        config = get_config()
+        from nanobot.config.loader import load_config, resolve_config_env_vars
+        config = resolve_config_env_vars(load_config())
         return config.agents.defaults.stock_agent_url
     except Exception:
         return STOCK_AGENT_API_URL
 
 
+def get_stock_agent_api_key() -> str | None:
+    """获取股票分析服务 API Key（从配置读取）"""
+    try:
+        from nanobot.config.loader import load_config, resolve_config_env_vars
+        config = resolve_config_env_vars(load_config())
+        return getattr(config.agents.defaults, 'stock_agent_api_key', None)
+    except Exception:
+        return None
+
+
 class _StockAgentTool(Tool):
     """股票分析工具基类"""
 
-    def __init__(self, api_url: str | None = None):
+    def __init__(self, api_url: str | None = None, api_key: str | None = None):
         self._api_url = api_url or get_stock_agent_url()
+        self._api_key = api_key or get_stock_agent_api_key()
 
     @property
     def read_only(self) -> bool:
         return True
+
+    def _get_headers(self) -> dict:
+        """获取请求 headers，包含认证"""
+        headers = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
+        return headers
 
 
 # ---------------------------------------------------------------------------
@@ -108,10 +126,11 @@ class AnalyzeStockTool(_StockAgentTool):
                 response = await client.post(
                     f"{self._api_url}/analyze",
                     json={
-                        "query": query,
+                        "user_query": query,
                         "user_id": user_id,
                         "session_id": session_id,
                     },
+                    headers=self._get_headers(),
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -167,6 +186,7 @@ class GetStockKlineTool(_StockAgentTool):
                 response = await client.post(
                     f"{self._api_url}/kline",
                     json={"ticker": ticker, "limit": limit},
+                    headers=self._get_headers(),
                 )
                 response.raise_for_status()
                 return response.json()
@@ -213,6 +233,7 @@ class FilterStocksTool(_StockAgentTool):
                 response = await client.post(
                     f"{self._api_url}/filter",
                     json={"sql_query": condition, "limit": limit},
+                    headers=self._get_headers(),
                 )
                 response.raise_for_status()
                 return response.json()
@@ -255,6 +276,7 @@ class AnalyzeConceptTool(_StockAgentTool):
                 response = await client.post(
                     f"{self._api_url}/concept",
                     json={"concept_name": concept_name},
+                    headers=self._get_headers(),
                 )
                 response.raise_for_status()
                 return response.json()
@@ -291,7 +313,7 @@ class GetChartTool(_StockAgentTool):
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
-                response = await client.get(f"{self._api_url}/chart/{chart_id}")
+                response = await client.get(f"{self._api_url}/chart/{chart_id}", headers=self._get_headers())
                 response.raise_for_status()
                 return response.json()
 
