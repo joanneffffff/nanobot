@@ -162,8 +162,9 @@ class AnalyzeStockTool(_StockAgentTool):
 
 @tool_parameters(
     tool_parameters_schema(
-        ticker=StringSchema("股票代码，如 sh.600519"),
-        limit=IntegerSchema(60, description="返回条数，默认60条", minimum=1, maximum=500),
+        stock_code=StringSchema("股票代码，如 600519"),
+        period=StringSchema("K线周期：day(日线)、week(周线)、month(月线)，默认day"),
+        days=IntegerSchema(60, description="返回天数，默认60", minimum=1, maximum=500),
     )
 )
 class GetStockKlineTool(_StockAgentTool):
@@ -177,15 +178,15 @@ class GetStockKlineTool(_StockAgentTool):
     def description(self) -> str:
         return "获取股票K线数据，包含开高低收、成交量等"
 
-    async def execute(self, ticker: str | None = None, limit: int = 60, **kwargs: Any) -> Any:
-        if not ticker:
+    async def execute(self, stock_code: str | None = None, period: str = "day", days: int = 60, **kwargs: Any) -> Any:
+        if not stock_code:
             return {"error": "缺少股票代码"}
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
-                response = await client.post(
-                    f"{self._api_url}/kline",
-                    json={"ticker": ticker, "limit": limit},
+                response = await client.get(
+                    f"{self._api_url}/query/kline",
+                    params={"stock_code": stock_code, "period": period, "days": days},
                     headers=self._get_headers(),
                 )
                 response.raise_for_status()
@@ -193,7 +194,7 @@ class GetStockKlineTool(_StockAgentTool):
 
             except httpx.HTTPError as e:
                 logger.error(f"get_stock_kline error: {e}")
-                return {"error": str(e), "ticker": ticker}
+                return {"error": str(e), "stock_code": stock_code}
 
 
 # ---------------------------------------------------------------------------
